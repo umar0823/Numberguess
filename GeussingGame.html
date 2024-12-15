@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guess the Number Game</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url("https://static.vecteezy.com/system/resources/previews/000/151/909/non_2x/number-coding-matrix-background-free-vector.jpg");
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        #game-container, #name-container, #leaderboard {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 400px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        h1, h2 {
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            width: calc(100% - 22px);
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #ff004c;
+            color: #ffffff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #b30009;
+        }
+
+        #feedback, #timer, #attempts, #best-score, #message {
+            font-size: 1.2em;
+        }
+
+        #leaderboard {
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Guess the Number Game</h1>
+
+    <div id="name-container">
+        <h2>Enter Your Name:</h2>
+        <input type="text" id="player-name" placeholder="Your Name">
+        <button onclick="startGame()">Start New Game</button>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <h2>Guess the 4-digit Number</h2>
+        <p id="timer">Time: 0 seconds</p>
+        <input type="text" id="player-guess" placeholder="Enter 4 digits" maxlength="4">
+        <button onclick="submitGuess()">Submit</button>
+        <p id="feedback"></p>
+        <p>Attempts: <span id="attempts">0</span></p>
+        <button id="restart-btn" onclick="restartGame()">Restart Game</button>
+        <p id="message"></p>
+    </div>
+
+    <div id="leaderboard">
+        <h2>Best Score</h2>
+        <p id="best-score">No scores yet!</p>
+    </div>
+
+    <script>
+        let playerName;
+        let secretNumber;
+        let attempts = 0;
+        let startTime;
+        let timerInterval;
+
+        function startGame() {
+            playerName = document.getElementById("player-name").value;
+            if (!playerName) {
+                document.getElementById("message").textContent = "Please enter your name to start the game!";
+                return;
+            }
+
+            secretNumber = generateUniqueNumber();
+            attempts = 0;
+
+            document.getElementById("message").textContent = `Welcome, ${playerName}! Let's start the game.`;
+            document.getElementById("name-container").style.display = "none";
+            document.getElementById("game-container").style.display = "block";
+
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimer, 10);
+        }
+
+        function generateUniqueNumber() {
+            let digits = [];
+            while (digits.length < 4) {
+                let digit = Math.floor(Math.random() * 10);
+                if (!digits.includes(digit)) {
+                    digits.push(digit);
+                }
+            }
+            return digits.join("");
+        }
+
+        function updateTimer() {
+            const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+            document.getElementById("timer").textContent = `Time: ${elapsedTime} seconds`;
+        }
+
+        function submitGuess() {
+            const playerGuess = document.getElementById("player-guess").value;
+            if (playerGuess.length !== 4 || isNaN(playerGuess)) {
+                document.getElementById("message").textContent = "Please enter a valid 4-digit number.";
+                return;
+            }
+
+            attempts++;
+            document.getElementById("attempts").textContent = attempts;
+
+            const feedback = getFeedback(playerGuess);
+            document.getElementById("feedback").textContent = feedback;
+
+            if (feedback === "++++") {
+                clearInterval(timerInterval);
+                const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+                document.getElementById("message").textContent = `Congratulations ${playerName}! You guessed the number in ${attempts} attempts and ${elapsedTime} seconds.`;
+                saveScore(playerName, attempts, elapsedTime);
+                resetGame();
+            } else {
+                document.getElementById("message").textContent = "Keep trying! You're getting closer.";
+            }
+        }
+
+        function getFeedback(guess) {
+            let plus = 0;
+            let minus = 0;
+
+            for (let i = 0; i < guess.length; i++) {
+                if (guess[i] === secretNumber[i]) {
+                    plus++;
+                } else if (secretNumber.includes(guess[i])) {
+                    minus++;
+                }
+            }
+
+            return "+".repeat(plus) + "-".repeat(minus);
+        }
+
+        function saveScore(name, attempts, time) {
+            const bestScore = localStorage.getItem("bestScore");
+
+            const newScore = { name, attempts, time };
+            if (!bestScore || isBetterScore(JSON.parse(bestScore), newScore)) {
+                localStorage.setItem("bestScore", JSON.stringify(newScore));
+                document.getElementById("message").textContent = `New Best Score! ${name} achieved it in ${attempts} attempts and ${time} seconds.`;
+            }
+
+            displayBestScore();
+        }
+
+        function isBetterScore(oldScore, newScore) {
+            const oldFactor = oldScore.attempts * oldScore.time;
+            const newFactor = newScore.attempts * newScore.time;
+            return newFactor < oldFactor;
+        }
+
+        function displayBestScore() {
+            const bestScore = JSON.parse(localStorage.getItem("bestScore"));
+            if (bestScore) {
+                document.getElementById("best-score").textContent = `Name: ${bestScore.name}, Attempts: ${bestScore.attempts}, Time: ${bestScore.time} seconds`;
+            }
+        }
+
+        function restartGame() {
+            resetGame(); 
+            startGame(); 
+        }
+
+        function resetGame() {
+            clearInterval(timerInterval);
+            document.getElementById("player-guess").value = "";
+            document.getElementById("feedback").textContent = "";
+            document.getElementById("attempts").textContent = "0";
+            document.getElementById("timer").textContent = "Time: 0 seconds";
+            document.getElementById("message").textContent = "";
+        }
+
+        displayBestScore();
+    </script>
+</body>
+</html>
